@@ -1,0 +1,28 @@
+{
+  "format": "api-fingerprint-console",
+  "version": 1,
+  "endpoints": [
+    {
+      "name": "示例线路",
+      "baseUrl": "https://api.example.com/v1",
+      "model": "gpt-6.1-sol",
+      "api": "responses",
+      "effort": "low",
+      "enabled": false,
+      "expectedCandidateIds": ["gpt-6-astra", "gpt-6.1-sol"],
+      "expectedCandidateNames": ["gpt-6-astra/6.1-sol", "gpt-6.1-sol"],
+      "keys": [
+        { "alias": "mqs", "enabled": false },
+        { "alias": "zkj", "enabled": false }
+      ]
+    }
+  ],
+  "schedule": { "intervalHours": 3, "minute": 59 },
+  "notifications": {
+    "enabled": false,
+    "channel": "bark",
+    "allowInsecure": false,
+    "bark": { "serverUrl": "https://api.day.app", "group": "API 指纹巡检", "sound": "" },
+    "webhook": { "format": "json" }
+  }
+}

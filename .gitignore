@@ -1,0 +1,13 @@
+node_modules/
+data/
+*.log
+.browser-guide*.txt
+__pycache__/
+.qa-*/
+.qa-*.mjs
+.qa-*.patch
+.release-info*.json
+.install-info.json
+UPGRADE-*.md
+artifacts/
+.DS_Store
