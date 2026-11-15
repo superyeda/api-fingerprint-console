@@ -4,10 +4,10 @@
 >
 > 把多个 API 地址、多个 Key 和巡检计划放在一个地方，定时取得结果，发现异常时再人工复核。
 
-[![Latest release](https://img.shields.io/github/v/release/OWNER/REPO?display_name=tag&sort=semver)](https://github.com/OWNER/REPO/releases)
+[![Latest release](https://img.shields.io/github/v/release/superyeda/api-fingerprint-console?display_name=tag&sort=semver)](https://github.com/superyeda/api-fingerprint-console/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-2f6fdf.svg)](LICENSE)
 
-> GitHub 仓库发布后，将上面 `OWNER/REPO` 替换为实际仓库地址。
+> GitHub 仓库发布后，将上面 `superyeda/api-fingerprint-console` 替换为实际仓库地址。
 
 ## 它能解决什么问题？
 
@@ -206,7 +206,7 @@ py -3 .\launch.py
 如果你是开发者，也可以直接克隆仓库：
 
 ```bash
-git clone https://github.com/OWNER/REPO.git
+git clone https://github.com/superyeda/api-fingerprint-console.git
 cd api-fingerprint-console
 npm ci --ignore-scripts
 npm test
