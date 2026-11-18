@@ -11,3 +11,4 @@ __pycache__/
 UPGRADE-*.md
 artifacts/
 .DS_Store
+.workbuddy/

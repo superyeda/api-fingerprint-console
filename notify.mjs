@@ -22,36 +22,25 @@ function display(value, max = 28) {
   return text ? clipped(text, max) : '未提供';
 }
 
-function timestamp(value) {
-  if (typeof value !== 'string' && !(value instanceof Date)) return '未提供';
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return '未提供';
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
+const STATUS_LABELS = {
+  match: '匹配参考类', suspect: '偏离参考类', inconclusive: '证据不足',
+  technical_error: '技术错误', skipped: '已跳过',
+};
 
-function sample(value) {
-  return Number.isInteger(value) && value >= 0 ? String(value) : '未提供';
-}
-
-function confidence(value) {
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1
-    ? `${(value * 100).toFixed(1)}%` : '未提供';
-}
-
-function resultLine(result, batch) {
+// One line per Key: alias + candidate. Without a candidate the conclusion stands in
+// for it, so a skipped or failed Key is still visible instead of looking complete.
+function candidate(result) {
   const r = result && typeof result === 'object' ? result : {};
-  const conclusions = {
-    match: '匹配参考类', suspect: '偏离参考类', inconclusive: '证据不足',
-    technical_error: '技术错误（请求未完成或数据不可用）', skipped: '已跳过',
-  };
-  const conclusion = typeof r.status === 'string' && Object.hasOwn(conclusions, r.status)
-    ? conclusions[r.status] : (r.status == null ? '未提供' : '未知');
+  const name = display(r.topName, 40);
+  if (name !== '未提供') return name;
+  return typeof r.status === 'string' && Object.hasOwn(STATUS_LABELS, r.status)
+    ? STATUS_LABELS[r.status] : (r.status == null ? '未提供' : '未知');
+}
+
+function resultLine(result) {
+  const r = result && typeof result === 'object' ? result : {};
   // Never render reason, exception details, raw replies, report paths or key IDs.
-  return `【${display(r.alias, 24)}】时间(本机)：${timestamp(r.startedAt ?? batch.startedAt)}→${timestamp(r.finishedAt ?? batch.finishedAt)}\n`
-    + `模型：${display(r.requestedModel, 28)}；effort：${display(r.effort, 10)}\n`
-    + `有效样本：${sample(r.validSamples)}/${sample(r.sampleCount)}；候选：${display(r.topName, 28)}；题库置信度：${confidence(r.probability)}\n`
-    + `结论：${conclusion}${r.alert === true ? '；连续异常，需要人工复核' : ''}`;
+  return `【${display(r.alias, 24)}】${candidate(r)}${r.alert === true ? '；连续异常，需人工复核' : ''}`;
 }
 
 function aggregateTitle(results) {
@@ -72,19 +61,16 @@ export function formatNotification(batch = {}) {
   const results = Array.isArray(source.results) ? source.results : [];
   const title = aggregateTitle(results);
   if (!results.length) {
-    return {
-      title,
-      body: `未提供各 Key 结果。时间(本机)：${timestamp(source.startedAt)}→${timestamp(source.finishedAt)}。\n模型、effort、有效样本、候选、题库置信度、结论：未提供。\n${LIMITATION}`,
-    };
+    return { title, body: `未提供各 Key 结果。\n${LIMITATION}` };
   }
-  const heading = `本批次 ${results.length} 个 Key（按别名）：`;
+  const heading = `本批次 ${results.length} 个 Key（别名 → 候选）：`;
   const lines = [];
   for (let index = 0; index < results.length; index += 1) {
-    const next = resultLine(results[index], source);
+    const next = resultLine(results[index]);
     const remaining = results.length - index - 1;
     const omission = remaining ? `另有 ${remaining} 个 Key 未列出，请查看本地控制台。` : '';
-    const candidate = [heading, ...lines, next, omission, LIMITATION].filter(Boolean).join('\n');
-    if (count(candidate) > MAX_BODY_CHARACTERS) break;
+    const draft = [heading, ...lines, next, omission, LIMITATION].filter(Boolean).join('\n');
+    if (count(draft) > MAX_BODY_CHARACTERS) break;
     lines.push(next);
   }
   const omitted = results.length - lines.length;

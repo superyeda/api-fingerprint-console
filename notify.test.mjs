@@ -38,11 +38,12 @@ function spawnMock({ code = 0, error, hang = false, stdinError = false } = {}) {
   return { spawnFn, calls, children };
 }
 
-test('per-alias summary includes required fields and always preserves limitations', () => {
+test('per-alias summary is alias plus candidate only, and always preserves limitations', () => {
   const notification = formatNotification(batch);
   assert.equal(notification.title, '指纹一致');
-  for (const expected of ['合成测试Key-A', '时间(本机)', 'gpt-6.1-sol', 'effort：low', '有效样本：3/3', 'gpt-6-astra/6.1-sol', '题库置信度：91.0%', '匹配参考类', '不能独立证明降质', '不等于身份真实性或能力评分', '合并参考类']) {
-    assert.ok(notification.body.includes(expected), expected);
+  assert.equal(notification.body, '本批次 1 个 Key（别名 → 候选）：\n【合成测试Key-A】gpt-6-astra/6.1-sol\n指纹不能独立证明降质；题库置信度不等于身份真实性或能力评分；astra/6.1-sol 为合并参考类。');
+  for (const dropped of ['时间(本机)', '模型：', 'effort', '有效样本', '题库置信度：91.0%', '结论：']) {
+    assert.ok(!notification.body.includes(dropped), dropped);
   }
   assert.ok([...notification.body].length <= 590);
 });
@@ -85,8 +86,8 @@ test('aggregate titles cover every status and conservatively prioritize mixed ba
 });
 
 test('technical errors never include raw reason, secret, raw response, or credential path', () => {
-  const notification = formatNotification({ results: [{ ...result, status: 'technical_error', reason: 'SECRET_RAW_REASON sk-SYNTHETIC123 /Users/private/credentials.json', error: 'RAW_EXCEPTION', rawResponse: 'RAW_MODEL_REPLY', keyId: 'PRIVATE_KEY_ID' }] });
-  assert.match(notification.body, /技术错误（请求未完成或数据不可用）/u);
+  const notification = formatNotification({ results: [{ ...result, status: 'technical_error', topName: null, reason: 'SECRET_RAW_REASON sk-SYNTHETIC123 /Users/private/credentials.json', error: 'RAW_EXCEPTION', rawResponse: 'RAW_MODEL_REPLY', keyId: 'PRIVATE_KEY_ID' }] });
+  assert.match(notification.body, /技术错误/u);
   assert.doesNotMatch(notification.body, /SECRET_RAW_REASON|SYNTHETIC|credentials|RAW_EXCEPTION|RAW_MODEL_REPLY|PRIVATE_KEY_ID/u);
   assert.match(notification.body, /不能独立证明降质/u);
 });
@@ -94,13 +95,10 @@ test('technical errors never include raw reason, secret, raw response, or creden
 test('missing fields are explicit; invalid values do not become fake samples/confidence', () => {
   const notification = formatNotification({ results: [{}] });
   assert.match(notification.body, /【未提供】/u);
-  assert.match(notification.body, /时间\(本机\)：未提供→未提供/u);
-  assert.match(notification.body, /模型：未提供；effort：未提供/u);
-  assert.match(notification.body, /有效样本：未提供\/未提供/u);
-  assert.match(notification.body, /候选：未提供；题库置信度：未提供/u);
-  assert.match(notification.body, /结论：未提供/u);
+  assert.match(notification.body, /【未提供】未提供/u);
+  assert.doesNotMatch(notification.body, /时间\(本机\)|有效样本|题库置信度：|模型：/u);
   const invalid = formatNotification({ results: [{ validSamples: -1, sampleCount: '3', probability: 1.2, startedAt: 'not-a-date', status: 'something-unknown' }] });
-  assert.match(invalid.body, /结论：未知/u);
+  assert.match(invalid.body, /【未提供】未知/u);
   assert.doesNotMatch(invalid.body, /120\.0%/u);
 });
 
@@ -116,7 +114,7 @@ test('empty/malformed batches remain safe, explicit, and limited', () => {
 
 test('all conclusions are mapped without copying untrusted reason', () => {
   for (const [status, text] of [['match', '匹配参考类'], ['suspect', '偏离参考类'], ['inconclusive', '证据不足'], ['skipped', '已跳过']]) {
-    const notification = formatNotification({ results: [{ ...result, status, reason: 'NEVER_ECHO' }] });
+    const notification = formatNotification({ results: [{ ...result, topName: null, status, reason: 'NEVER_ECHO' }] });
     assert.ok(notification.body.includes(text));
     assert.doesNotMatch(notification.body, /NEVER_ECHO/u);
   }
@@ -251,8 +249,8 @@ test('execFile alias supports errors and refuses adapters without stdin', async 
 
 test('prototype-named statuses never become an inherited conclusion', () => {
   for (const status of ['toString', 'constructor', '__proto__']) {
-    const notification = formatNotification({ results: [{ ...result, status }] });
-    assert.match(notification.body, /结论：未知/u);
+    const notification = formatNotification({ results: [{ ...result, topName: null, status }] });
+    assert.match(notification.body, /未知/u);
     assert.doesNotMatch(notification.body, /function|\[object Object\]/u);
   }
 });
